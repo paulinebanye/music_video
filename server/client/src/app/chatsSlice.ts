@@ -4,6 +4,7 @@ import { sanitize } from "../utils/sanitizer";
 
 // import avatar from "../media/chatItem.svg";
 
+//Redux slice of chat and chat actions
 const chatsSlice = createSlice({
 	name: "chats",
 
