@@ -41,7 +41,7 @@ This project is focused on the ZuriChat music plugin.
 
 > ## Project Features
 >
-The YouTube music plugin allows the users in the organization to add and play Youtube links.You can also chat in real time with other members of the organization.
+> The YouTube music plugin allows the users in the organization to add and play Youtube links.You can also chat in real time with other members of the organization.
 
 - Add and Play Youtube music and videos.
 
@@ -100,7 +100,7 @@ After the installation of the Python program, setup the project environment with
 
 - This project was setup using the gitbash terminal. Some of the commands used do not work with command prompt or powershell.
 
-* If a "pip command not found error" is encountered, download get-pip.py and run `phython get-pip.py` to install it.
+* If a "pip command not found error" is encountered, download get-pip.py and run `python get-pip.py` to install it.
 
 ###
 
@@ -220,7 +220,7 @@ An exhaustive list can be found in the requirements.txt file included in this pr
 
 > ## Links to the project
 >
- Local server: <a href='<http://localhost:22672/music>'>http://localhost:22672/music</a>
+> Local server: <a href='<http://localhost:22672/music>'>http://localhost:22672/music</a>
 
 Zurichat Staging site: <a href='<http://staging.zuri.chat/music>'>http://staging.zuri.chat/music</a>
 
@@ -232,7 +232,7 @@ Live site: <a href='<http://music.zuri.chat/music>'>http://music.zuri.chat/music
 
 > ## Status
 >
-This project is a work in progress and is currently under development.
+> This project is a work in progress and is currently under development.
 
 #
 
