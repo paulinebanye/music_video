@@ -3,80 +3,93 @@
 This document captures the planned NestJS architecture inferred from the existing Django implementation and the HTTP contracts documented in `ENDPOINTS.md`. Unless explicitly marked as **Implemented**, all modules and components remain **not yet implemented**.
 
 ## High-Level Application Structure
-- NestJS application root (`AppModule`) aggregates feature modules representing legacy slices: Plugin/Marketplace, Songs / Playback, Search, Comments, Rooms & Membership, and auxiliary cross-cutting infrastructure.
-- Each feature module exposes controllers that mirror legacy endpoints one-for-one. No route redesign is proposed.
-- Services encapsulate orchestration of outbound dependencies (Zuri Core APIs, data read/write endpoints, Centrifugo, YouTube scraping). Apart from the implemented Plugin Info slice, these services are placeholders.
+- NestJS application root (`AppModule`) aggregates the feature modules listed below.
+- Controllers map legacy endpoints one-for-one; no route redesign is proposed.
+- Services orchestrate outbound dependencies (Zuri Core APIs, data endpoints, Centrifugo, YouTube metadata). Apart from the implemented Plugin Info slice, these services are placeholders.
 
-## Module Boundaries
+## Module Breakdown
 
-### Plugin/Marketplace Module
-- **Endpoints covered:**
-  - `GET /music/api/v1/info` — **Implemented** (matches legacy static payload).
+### PluginModule
+- **Controllers:** `PluginInfoController` (Implemented), `PluginSidebarController` (Not yet implemented), `PluginDocsController` (Not yet implemented).
+- **Services:** `PluginInfoService` (Implemented), `PluginSidebarService` (Not yet implemented), `PluginDocsService` (Not yet implemented).
+- **Endpoints:**
+  - `GET /music/api/v1/info` — **Implemented**.
+  - `GET /api/v1/sidebar` — **Not yet implemented**.
+  - Static/docs routes (`/music`, `/music/schema`, `/music/docs`, `/music/redoc`, `/media/*`) — **Not yet implemented**.
+
+### InstallationModule
+- **Controllers:** `PluginPingController` (Not yet implemented), `PluginInstallController` (Not yet implemented), `PluginUninstallController` (Not yet implemented).
+- **Services:** `PluginPingService` (Not yet implemented), `PluginInstallService` (Not yet implemented), `PluginUninstallService` (Not yet implemented).
+- **Endpoints:**
   - `GET /music/api/v1/ping` — **Not yet implemented**.
   - `POST /music/api/v1/install` — **Not yet implemented**.
   - `DELETE /music/api/v1/uninstall` — **Not yet implemented**.
-  - `GET /api/v1/sidebar` — **Not yet implemented**.
-  - Static/docs routes (`/music`, `/music/schema`, `/music/docs`, `/music/redoc`, `/media/*`) — **Not yet implemented**.
-- **Responsibilities (conceptual):**
-  - Serve static plugin metadata and documentation proxies.
-  - Handle plugin lifecycle operations (install/uninstall) against Zuri Core APIs.
-  - Proxy sidebar information leveraging organisation membership lookups.
-  - Surface static assets when running in legacy-compatible mode.
-- **Dependencies:** RequestClient (for outbound HTTP to Zuri services), DataStorage (for room info), potential configuration providers for static content.
 
-### Songs / Playback Module
-- **Status:** **Not yet implemented**.
-- **Endpoints covered:** `/music/api/v1/org/<org_id>/room/<_id>/songs*` and `/music/api/v1/org/<org_id>/room/<_id>/songs/current`.
-- **Responsibilities:**
-  - Manage playlist CRUD against Zuri data services.
-  - Coordinate real-time notifications via Centrifugo when songs change.
-  - Perform YouTube metadata scraping to enrich song payloads.
-- **Dependencies:** RequestClient (Zuri endpoints, YouTube fetch), DataStorage (legacy helper compatibility), Centrifugo publisher abstraction, HTML parsing utility.
+### SongsModule
+- **Controllers:** `SongController` (Not yet implemented), `CurrentSongController` (Not yet implemented), `SongLikeController` (Not yet implemented).
+- **Services:** `SongService` (Not yet implemented), `CurrentSongService` (Not yet implemented), `SongLikeService` (Not yet implemented).
+- **Endpoints:**
+  - `GET /music/api/v1/org/<org_id>/room/<_id>/songs` — **Not yet implemented**.
+  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs` — **Not yet implemented**.
+  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs/delete` — **Not yet implemented**.
+  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs/like` — **Not yet implemented**.
+  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs/likecount` — **Not yet implemented**.
+  - `GET,POST /music/api/v1/org/<org_id>/room/<_id>/songs/current` — **Not yet implemented**.
 
-### Search Module
-- **Status:** **Not yet implemented**.
-- **Endpoints covered:** `/music/api/v1/search/<org_id>/<member_id>` and `/music/api/v1/search-suggestions/<org_id>/<member_id>`.
-- **Responsibilities:**
-  - Execute collection reads and transform results into search responses according to existing pagination structure.
-- **Dependencies:** RequestClient or DataStorage for fetches; pagination helpers mirroring legacy behavior.
+### CommentsModule
+- **Controllers:** `CommentController` (Not yet implemented).
+- **Services:** `CommentService` (Not yet implemented).
+- **Endpoints:**
+  - `GET,POST /music/api/v1/org/<org_id>/room/<_id>/comments` — **Not yet implemented**.
+  - `POST /music/api/v1/org/<org_id>/room/<_id>/comments/delete` — **Not yet implemented**.
+  - `PUT /music/api/v1/org/<org_id>/room/<_id>/comments/update` — **Not yet implemented**.
 
-### Comments Module
-- **Status:** **Not yet implemented**.
-- **Endpoints covered:** `/music/api/v1/org/<org_id>/room/<_id>/comments*`.
-- **Responsibilities:**
-  - CRUD operations on comment documents via Zuri data service endpoints.
-  - Broadcast comment updates to Centrifugo channels following current payload structure.
-- **Dependencies:** DataStorage, RequestClient, Centrifugo publisher abstraction, serializer-style DTO validation.
+### RoomsModule
+- **Controllers:** `RoomController` (Not yet implemented), `RoomDetailController` (Not yet implemented), `RoomDeletionController` (Not yet implemented).
+- **Services:** `RoomService` (Not yet implemented), `RoomDetailService` (Not yet implemented), `RoomDeletionService` (Not yet implemented).
+- **Endpoints:**
+  - `GET /music/api/v1/org/<org_id>/room` — **Not yet implemented**.
+  - `GET /music/api/v1/org/<org_id>/room/<_id>` — **Not yet implemented**.
+  - `DELETE /music/api/v1/org/<org_id>/room/<_id>/delete` — **Not yet implemented**.
 
-### Rooms & Membership Module
-- **Status:** **Not yet implemented**.
-- **Endpoints covered:** `/music/api/v1/org/<org_id>/room*`, `/music/api/v1/org/<org_id>/members*`.
-- **Responsibilities:**
-  - Expose room listings, details, creation, and deletion.
-  - Manage membership counts, additions, and removals with matching Centrifugo side effects.
-- **Dependencies:** DataStorage, RequestClient, Centrifugo publisher abstraction.
+### MembersModule
+- **Controllers:** `RoomCreationController` (Not yet implemented), `MemberCountController` (Not yet implemented), `MemberManagementController` (Not yet implemented).
+- **Services:** `RoomCreationService` (Not yet implemented), `MemberCountService` (Not yet implemented), `MemberManagementService` (Not yet implemented).
+- **Endpoints:**
+  - `GET,POST /music/api/v1/org/<org_id>/members/<member_id>/create` — **Not yet implemented**.
+  - `GET /music/api/v1/org/<org_id>/room/<_id>/members/count` — **Not yet implemented**.
+  - `PUT /music/api/v1/org/<org_id>/room/<_id>/members/remove` — **Not yet implemented**.
+  - `GET /music/api/v1/org/<org_id>/room/<_id>/members` — **Not yet implemented**.
+  - `POST /music/api/v1/org/<org_id>/room/<room_id>/members/add` — **Not yet implemented**.
 
-### Centrifugo / Realtime Support
-- **Status:** **Not yet implemented**.
-- Shared support components to encapsulate publish semantics. Controllers/services above would delegate to this abstraction rather than using HTTP clients directly.
+### SearchModule
+- **Controllers:** `SearchController` (Not yet implemented), `SearchSuggestionController` (Not yet implemented).
+- **Services:** `SearchService` (Not yet implemented), `SearchSuggestionService` (Not yet implemented).
+- **Endpoints:**
+  - `GET /music/api/v1/search/<org_id>/<member_id>` — **Not yet implemented**.
+  - `GET /music/api/v1/search-suggestions/<org_id>/<member_id>` — **Not yet implemented**.
 
-### YouTube Scraping / Parsing Support
-- **Status:** **Not yet implemented**.
-- Utility providers to mirror the existing BeautifulSoup-based extraction of metadata. Should remain isolated so it can be swapped when Nest adoption introduces a more robust client.
+## Controller–Service Data Flow
+- Controllers remain thin: they validate inputs and forward to their corresponding services.
+- Services contain all orchestration logic, including interactions with outbound dependencies.
+- Shared providers used by services (where applicable) include:
+  - `RequestClient` (HTTP interactions with Zuri services) — **Not yet implemented**.
+  - `DataStorage` (Zuri data read/write abstraction) — **Not yet implemented**.
+  - `MediaMetadataProvider` / YouTube lookup helper — **Not yet implemented**.
+  - `CentrifugoPublisher` abstraction — **Not yet implemented**.
+- Controllers translate service responses into HTTP responses without altering business rules.
 
 ## Shared Infrastructure
-- **RequestClient Abstraction:** central outbound HTTP client with configurable base URLs, headers, and timeout behavior. **Not yet implemented**.
-- **DataStorage Abstraction:** mirrors legacy `DataStorage` helper to maintain compatibility with Zuri data read/write APIs while allowing the implementation to evolve later. **Not yet implemented**.
-- **HttpExceptionFilter:** normalizes uncaught exceptions into JSON error responses consistent with Nest conventions while preserving compatibility with legacy error expectations. **Implemented** as scaffolding; behaviour remains minimal.
-- **Validation Pipeline:** global `ValidationPipe` enforcing DTO schemas derived from documented contracts (whitelisting fields, transforming primitives, disabling detailed target/value echoing). **Implemented** at the framework level.
-- **Configuration Provider:** central mechanism for environment-driven values (plugin IDs, tokens, URLs). **Not yet implemented**.
+- **HttpExceptionFilter:** global filter providing consistent error envelopes. **Implemented** as scaffolding.
+- **Validation Pipeline:** global `ValidationPipe` enforcing DTO schemas. **Implemented** at the framework level.
+- **Configuration Provider:** environment-driven values for plugin IDs, tokens, URLs. **Not yet implemented**.
 
 ## Cross-Cutting Concerns
-- **Validation:** DTO-based validation for requests will match existing field names and optionality. Beyond the implemented Plugin Info response, additional validation rules remain **not yet implemented**.
-- **Error Mapping:** Services should translate upstream errors (Zuri APIs, Centrifugo) into HTTP status codes currently observed (e.g., 424 for dependency failures). Strategy remains **not yet implemented**.
-- **Logging & Monitoring:** Not described in legacy code; remains out of scope in this draft.
-- **Configuration:** Environment variable management is required for IDs/tokens currently hard-coded in Django settings. Implementation is **not yet implemented**.
+- **Validation:** DTO-based validation mirrors legacy field requirements. Additional slices remain **not yet implemented**.
+- **Error Mapping:** Service-level translation of dependency failures into HTTP status codes (e.g., 424) remains **not yet implemented**.
+- **Logging & Monitoring:** Not defined in legacy scope; **not yet implemented**.
+- **Configuration:** Loading of environment values is **not yet implemented**.
 
-## Implementation Status
-- Plugin/Marketplace module has its `GET /music/api/v1/info` slice implemented and aligned with the documented contract.
-- All other modules and endpoints remain **not yet implemented** pending future migration work. Future commits should reference this architecture to ensure feature parity with the legacy system without altering HTTP contracts.
+## Implementation Status Summary
+- `GET /music/api/v1/info` handled by `PluginInfoController`/`PluginInfoService` — **Implemented** and aligned with the documented contract.
+- All other modules, controllers, services, and shared providers are **not yet implemented** pending future migration work.
