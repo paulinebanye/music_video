@@ -1,6 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+
+export class PluginInstallRequestDto {
+  @ApiProperty({ description: 'Identifier of the user performing the installation' })
+  @IsString()
+  @IsNotEmpty()
+  user_id!: string;
+
+  @ApiProperty({ description: 'Identifier of the organisation where the plugin will be installed' })
+  @IsString()
+  @IsNotEmpty()
+  organisation_id!: string;
+}
 
 class PluginInstallResponseDataDto {
   @ApiProperty({ description: 'Redirect URL after successful installation' })

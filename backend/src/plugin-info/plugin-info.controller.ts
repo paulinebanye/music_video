@@ -3,8 +3,10 @@ import { ApiBody, ApiOkResponse, ApiResponse } from '@nestjs/swagger';
 import { PluginInfoService } from './plugin-info.service';
 import { PluginInfoResponseDto } from './dto/plugin-info-response.dto';
 import { PluginPingResponseDto } from './dto/plugin-ping-response.dto';
-import { PluginInstallRequestDto } from './dto/plugin-install-request.dto';
-import { PluginInstallResponseDto } from './dto/plugin-install-response.dto';
+import {
+  PluginInstallRequestDto,
+  PluginInstallResponseDto,
+} from './dto/plugin-install.dto';
 
 @Controller('api/v1/music')
 export class PluginInfoController {
