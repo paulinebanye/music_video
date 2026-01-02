@@ -1,158 +1,49 @@
 # Legacy Endpoint Inventory
+# =========================
 
-## Static / Docs
-- GET `/music` → `django.views.generic.base.TemplateView`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: none
-- ANY `/music/admin/*` → `django.contrib.admin.sites.AdminSite`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Medium (privileged access, CSRF/session requirements)
-  - Dependencies: Django admin auth/session
-- GET `/api/v1/sidebar` → `music.views.SidebarView`
-  - Module: Plugin/Marketplace
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Core API (org members), Zuri Data service (`get_room_info`)
-- GET `/music/schema` → `drf_spectacular.views.SpectacularAPIView`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: drf-spectacular schema generation
-- GET `/music/docs` → `drf_spectacular.views.SpectacularSwaggerView`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: drf-spectacular swagger UI
-- GET `/music/redoc` → `drf_spectacular.views.SpectacularRedocView`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: drf-spectacular redoc UI
-- GET `/media/<path:resource>` → `django.views.static.serve`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: filesystem static assets
+Authoritative inventory derived from Django `server/config/urls.py`, `server/music/urls.py`, and view classes in `server/music/views.py`.
+
+## Static & Documentation
+- **GET** `/music` → TemplateView (`index.html`)
+- **ANY** `/music/admin` → Django AdminSite
+- **GET** `/music/schema` → SpectacularAPIView
+- **GET** `/music/docs` → SpectacularSwaggerView
+- **GET** `/music/redoc` → SpectacularRedocView
+- **GET** `/media/<path:resource>` → Django static serve
+
+## Sidebar
+- **GET** `/api/v1/sidebar` → SidebarView
 
 ## Plugin Lifecycle
-- GET `/music/api/v1/info` → `music.views.PluginInfoView`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: none
-- GET `/music/api/v1/ping` → `music.views.PluginPingView`
-  - Module: Plugin/Marketplace
-  - Complexity: Low
-  - Risk: Medium (relies on external uptime)
-  - Dependencies: music.zuri.chat HTTP endpoint
-- POST `/music/api/v1/install` → `music.views.InstallView`
-  - Module: Plugin/Marketplace
-  - Complexity: Medium
-  - Risk: High (writes to Zuri org plugins)
-  - Dependencies: Zuri Core API (`/organizations/{org_id}/plugins`)
-- DELETE `/music/api/v1/uninstall` → `music.views.UninstallView`
-  - Module: Plugin/Marketplace
-  - Complexity: Medium
-  - Risk: High (removes plugin from Zuri org)
-  - Dependencies: Zuri Core API (`/organizations/{org_id}/plugins/{plugin_id}`)
+- **GET** `/music/api/v1/info` → PluginInfoView
+- **GET** `/music/api/v1/ping` → PluginPingView
+- **POST** `/music/api/v1/install` → InstallView
+- **DELETE** `/music/api/v1/uninstall` → UninstallView
 
-## Songs / Playback
-- GET,POST `/music/api/v1/org/<org_id>/room/<_id>/songs/current` → `music.views.change_room_image`
-  - Module: Songs / Playback
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: in-memory state only
-- GET,POST `/music/api/v1/org/<org_id>/room/<_id>/songs` → `music.views.SongView`
-  - Module: YouTube scraping / parsing
-  - Complexity: High (validation, YouTube scraping, persistence, realtime broadcast)
-  - Risk: High (HTML parsing brittleness, external writes, Centrifugo fan-out)
-  - Dependencies: YouTube web pages (`get_video`), Zuri Data service (`read_data`, `write_data`), Centrifugo publish
-- POST `/music/api/v1/org/<org_id>/room/<_id>/songs/delete` → `music.views.DeleteSongView`
-  - Module: Songs / Playback
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`delete_data`, `read_data`), Centrifugo publish
-- POST `/music/api/v1/org/<org_id>/room/<_id>/songs/like` → `music.views.LikeSongView`
-  - Module: Songs / Playback
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`DataStorage.read/update`), Centrifugo publish
-- POST `/music/api/v1/org/<org_id>/room/<_id>/songs/likecount` → `music.views.songLikeCountView`
-  - Module: Songs / Playback
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`, `DataStorage.update`)
+## Songs
+- **GET, POST** `/music/api/v1/org/<org_id>/room/<_id>/songs/current` → change_room_image
+- **GET, POST** `/music/api/v1/org/<org_id>/room/<_id>/songs` → SongView
+- **POST** `/music/api/v1/org/<org_id>/room/<_id>/songs/delete` → DeleteSongView
+- **POST** `/music/api/v1/org/<org_id>/room/<_id>/songs/like` → LikeSongView
+- **POST** `/music/api/v1/org/<org_id>/room/<_id>/songs/likecount` → songLikeCountView
 
 ## Search
-- GET `/music/api/v1/search/<org_id>/<member_id>` → `music.views.SongSearchView`
-  - Module: Search
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`)
-- GET `/music/api/v1/search-suggestions/<org_id>/<member_id>` → `music.views.SongSearchSuggestions`
-  - Module: Search
-  - Complexity: Low
-  - Risk: Low
-  - Dependencies: Zuri Data service (`read_data`)
+- **GET** `/music/api/v1/search/<org_id>/<member_id>` → SongSearchView
+- **GET** `/music/api/v1/search-suggestions/<org_id>/<member_id>` → SongSearchSuggestions
 
 ## Comments
-- GET,POST `/music/api/v1/org/<org_id>/room/<_id>/comments` → `music.views.CommentView`
-  - Module: Comments
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`, `write_data`), Centrifugo publish
-- POST `/music/api/v1/org/<org_id>/room/<_id>/comments/delete` → `music.views.DeleteCommentView`
-  - Module: Comments
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`delete_data`, `read_data`), Centrifugo publish
-- PUT `/music/api/v1/org/<org_id>/room/<_id>/comments/update` → `music.views.UpdateCommentView`
-  - Module: Comments
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`write_data`, `read_data`), Centrifugo publish
+- **GET, POST** `/music/api/v1/org/<org_id>/room/<_id>/comments` → CommentView
+- **POST** `/music/api/v1/org/<org_id>/room/<_id>/comments/delete` → DeleteCommentView
+- **PUT** `/music/api/v1/org/<org_id>/room/<_id>/comments/update` → UpdateCommentView
 
-## Rooms & Membership
-- GET `/music/api/v1/org/<org_id>/room` → `music.views.RoomView`
-  - Module: Centrifugo / realtime
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`)
-- GET `/music/api/v1/org/<org_id>/room/<_id>` → `music.views.RoomDetailView`
-  - Module: Centrifugo / realtime
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`)
-- DELETE `/music/api/v1/org/<org_id>/room/<_id>/delete` → `music.views.DeleteRoomView`
-  - Module: Centrifugo / realtime
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`, `delete_data`)
-- GET,POST `/music/api/v1/org/<org_id>/members/<member_id>/create` → `music.views.CreateRoom`
-  - Module: Centrifugo / realtime
-  - Complexity: High (multi-service orchestration)
-  - Risk: High (writes to multiple Zuri endpoints)
-  - Dependencies: Zuri Data service (`write_data`, `read_data`), Zuri Core API (`/data/write` direct call)
-- GET `/music/api/v1/org/<org_id>/room/<_id>/members/count` → `music.views.UserCountView`
-  - Module: Centrifugo / realtime
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`), Centrifugo publish (`centrifugo_post`)
-- PUT `/music/api/v1/org/<org_id>/room/<_id>/members/remove` → `music.views.DeleteRoomUserView`
-  - Module: Centrifugo / realtime
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`, `write_data`), Centrifugo publish
-- GET `/music/api/v1/org/<org_id>/room/<_id>/members` → `music.views.RoomUserList`
-  - Module: Centrifugo / realtime
-  - Complexity: Medium
-  - Risk: Medium
-  - Dependencies: Zuri Data service (`read_data`)
-- POST `/music/api/v1/org/<org_id>/room/<room_id>/members/add` → `music.views.AddUserToRoomView`
-  - Module: Centrifugo / realtime
-  - Complexity: High (batch membership updates + realtime fan-out)
-  - Risk: High
-  - Dependencies: Zuri Data service (`DataStorage.read/update`), Centrifugo publish
+## Rooms
+- **GET** `/music/api/v1/org/<org_id>/room` → RoomView
+- **GET** `/music/api/v1/org/<org_id>/room/<_id>` → RoomDetailView
+- **DELETE** `/music/api/v1/org/<org_id>/room/<_id>/delete` → DeleteRoomView
+- **GET, POST** `/music/api/v1/org/<org_id>/members/<member_id>/create` → CreateRoom
+
+## Members
+- **GET** `/music/api/v1/org/<org_id>/room/<_id>/members/count` → UserCountView
+- **PUT** `/music/api/v1/org/<org_id>/room/<_id>/members/remove` → DeleteRoomUserView
+- **GET** `/music/api/v1/org/<org_id>/room/<_id>/members` → RoomUserList
+- **POST** `/music/api/v1/org/<org_id>/room/<room_id>/members/add` → AddUserToRoomView

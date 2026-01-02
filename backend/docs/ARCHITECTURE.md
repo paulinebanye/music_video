@@ -1,95 +1,81 @@
-# Target NestJS Architecture (Draft)
+# Legacy Architecture Overview
 
-This document captures the planned NestJS architecture inferred from the existing Django implementation and the HTTP contracts documented in `ENDPOINTS.md`. Unless explicitly marked as **Implemented**, all modules and components remain **not yet implemented**.
+This document captures the current Django implementation that powers the music plugin. It is derived directly from `server/` (Django project) and the auxiliary FastAPI helper located in `zc_music/`. Nothing in this document describes new NestJS behaviour; it is a factual map of the legacy system that we will migrate.
 
-## High-Level Application Structure
-- NestJS application root (`AppModule`) aggregates the feature modules listed below.
-- Controllers map legacy endpoints one-for-one; no route redesign is proposed.
-- Services orchestrate outbound dependencies (Zuri Core APIs, data endpoints, Centrifugo, YouTube metadata). Apart from the implemented Plugin Info slice, these services are placeholders.
+## High-Level Composition
+- **Django project (`server/`)**
+  - `config/`: global settings and URL registration.
+  - `music/`: single Django app containing all views, serializers, pagination helpers, authentication hooks, and data-access utilities.
+- **FastAPI helper (`zc_music/backend`)**
+  - Provides the `/api/v1/org/{org_id}/rooms/{room_id}` endpoint for adding members to a room using the shared `DataStorage` abstraction.
+- **Shared utilities**
+  - `music/utils/dataStorage.py` (under `server/music/utils/` in the original repository) and `zc_music/backend/dataStorage.py` both expose a `DataStorage` class plus `centrifugo_publish` helper.
+  - `music/utils/data_access.py` (imported throughout `views.py`) wraps calls to Zuri Core APIs and in-memory caches.
 
-## Module Breakdown
+The Django app behaves as a monolith: all HTTP routes are registered under `music/api/v1` and are served by class-based views in `server/music/views.py`.
 
-### PluginModule
-- **Controllers:** `PluginInfoController` (Implemented), `PluginSidebarController` (Not yet implemented), `PluginDocsController` (Not yet implemented).
-- **Services:** `PluginInfoService` (Implemented), `PluginSidebarService` (Not yet implemented), `PluginDocsService` (Not yet implemented).
-- **Endpoints:**
-  - `GET /music/api/v1/info` — **Implemented**.
-  - `GET /api/v1/sidebar` — **Not yet implemented**.
-  - Static/docs routes (`/music`, `/music/schema`, `/music/docs`, `/music/redoc`, `/media/*`) — **Not yet implemented**.
+## URL Entrypoints
+- `server/config/urls.py` mounts:
+  - `/music` SPA shell (`TemplateView`)
+  - `/music/admin` Django admin
+  - `/music/api/v1/` → `music.urls` (domain endpoints)
+  - `/api/v1/sidebar` → `SidebarView`
+  - `/music/schema|docs|redoc` → drf-spectacular documentation
+  - `/media/*` static asset serving
+- `server/music/urls.py` defines all domain routes and maps them to view classes inside `server/music/views.py` (see `ENDPOINTS.md` for the exhaustive list).
 
-### InstallationModule
-- **Controllers:** `PluginPingController` (Not yet implemented), `PluginInstallController` (Not yet implemented), `PluginUninstallController` (Not yet implemented).
-- **Services:** `PluginPingService` (Not yet implemented), `PluginInstallService` (Not yet implemented), `PluginUninstallService` (Not yet implemented).
-- **Endpoints:**
-  - `GET /music/api/v1/ping` — **Not yet implemented**.
-  - `POST /music/api/v1/install` — **Not yet implemented**.
-  - `DELETE /music/api/v1/uninstall` — **Not yet implemented**.
+## Domain Modules & Responsibilities
 
-### SongsModule
-- **Controllers:** `SongController` (Not yet implemented), `CurrentSongController` (Not yet implemented), `SongLikeController` (Not yet implemented).
-- **Services:** `SongService` (Not yet implemented), `CurrentSongService` (Not yet implemented), `SongLikeService` (Not yet implemented).
-- **Endpoints:**
-  - `GET /music/api/v1/org/<org_id>/room/<_id>/songs` — **Not yet implemented**.
-  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs` — **Not yet implemented**.
-  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs/delete` — **Not yet implemented**.
-  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs/like` — **Not yet implemented**.
-  - `POST /music/api/v1/org/<org_id>/room/<_id>/songs/likecount` — **Not yet implemented**.
-  - `GET,POST /music/api/v1/org/<org_id>/room/<_id>/songs/current` — **Not yet implemented**.
+### Static & Docs
+- Serves the SPA shell, API schema, Swagger, and ReDoc UIs.
+- No business logic beyond template rendering.
 
-### CommentsModule
-- **Controllers:** `CommentController` (Not yet implemented).
-- **Services:** `CommentService` (Not yet implemented).
-- **Endpoints:**
-  - `GET,POST /music/api/v1/org/<org_id>/room/<_id>/comments` — **Not yet implemented**.
-  - `POST /music/api/v1/org/<org_id>/room/<_id>/comments/delete` — **Not yet implemented**.
-  - `PUT /music/api/v1/org/<org_id>/room/<_id>/comments/update` — **Not yet implemented**.
+### Sidebar
+- `SidebarView` reads organisation and user IDs from query parameters.
+- Fetches sidebar metadata using `get_room_info` and `get_org_members` (wrappers around Zuri Core APIs).
+- Builds payloads that mirror the sidebar structure expected by Zuri Chat clients.
 
-### RoomsModule
-- **Controllers:** `RoomController` (Not yet implemented), `RoomDetailController` (Not yet implemented), `RoomDeletionController` (Not yet implemented).
-- **Services:** `RoomService` (Not yet implemented), `RoomDetailService` (Not yet implemented), `RoomDeletionService` (Not yet implemented).
-- **Endpoints:**
-  - `GET /music/api/v1/org/<org_id>/room` — **Not yet implemented**.
-  - `GET /music/api/v1/org/<org_id>/room/<_id>` — **Not yet implemented**.
-  - `DELETE /music/api/v1/org/<org_id>/room/<_id>/delete` — **Not yet implemented**.
+### Plugin Lifecycle
+- `PluginInfoView` returns static metadata about the plugin (name, description, version, URLs).
+- `PluginPingView` performs an HTTP check against `music.zuri.chat`.
+- `InstallView` and `UninstallView` forward authenticated requests to Zuri Core API endpoints (`/organizations/{org_id}/plugins`), passing through plugin, user, and organisation IDs.
+- Relies on a `RequestClient` helper to perform HTTP operations and bubble up status codes (200, 400, 424, etc.).
 
-### MembersModule
-- **Controllers:** `RoomCreationController` (Not yet implemented), `MemberCountController` (Not yet implemented), `MemberManagementController` (Not yet implemented).
-- **Services:** `RoomCreationService` (Not yet implemented), `MemberCountService` (Not yet implemented), `MemberManagementService` (Not yet implemented).
-- **Endpoints:**
-  - `GET,POST /music/api/v1/org/<org_id>/members/<member_id>/create` — **Not yet implemented**.
-  - `GET /music/api/v1/org/<org_id>/room/<_id>/members/count` — **Not yet implemented**.
-  - `PUT /music/api/v1/org/<org_id>/room/<_id>/members/remove` — **Not yet implemented**.
-  - `GET /music/api/v1/org/<org_id>/room/<_id>/members` — **Not yet implemented**.
-  - `POST /music/api/v1/org/<org_id>/room/<room_id>/members/add` — **Not yet implemented**.
+### Songs & Playback
+- `SongView`, `change_room_image`, `DeleteSongView`, `LikeSongView`, and `songLikeCountView` manage playlist data within the `musicroom` collection via `DataStorage`.
+- Uses `search_youtube` utilities to scrape YouTube results and `centrifugo_publish` to broadcast updates.
+- Serializers enforce payload structure (`SongSerializer`, `LikeSongSerializer`, etc.).
 
-### SearchModule
-- **Controllers:** `SearchController` (Not yet implemented), `SearchSuggestionController` (Not yet implemented).
-- **Services:** `SearchService` (Not yet implemented), `SearchSuggestionService` (Not yet implemented).
-- **Endpoints:**
-  - `GET /music/api/v1/search/<org_id>/<member_id>` — **Not yet implemented**.
-  - `GET /music/api/v1/search-suggestions/<org_id>/<member_id>` — **Not yet implemented**.
+### Search
+- `SongSearchView` and `SongSearchSuggestions` run filtered reads against the `musicroom` collection using `DataStorage.read` and custom pagination (`SearchPagination`).
 
-## Controller–Service Data Flow
-- Controllers remain thin: they validate inputs and forward to their corresponding services.
-- Services contain all orchestration logic, including interactions with outbound dependencies.
-- Shared providers used by services (where applicable) include:
-  - `RequestClient` (HTTP interactions with Zuri services) — **Not yet implemented**.
-  - `DataStorage` (Zuri data read/write abstraction) — **Not yet implemented**.
-  - `MediaMetadataProvider` / YouTube lookup helper — **Not yet implemented**.
-  - `CentrifugoPublisher` abstraction — **Not yet implemented**.
-- Controllers translate service responses into HTTP responses without altering business rules.
+### Comments
+- `CommentView`, `DeleteCommentView`, and `UpdateCommentView` manage comment threads stored under the `comments` collection.
+- Uses `CommentSerializer` for validation and Centrifugo for realtime fan-out of create/update/delete events.
 
-## Shared Infrastructure
-- **HttpExceptionFilter:** global filter providing consistent error envelopes. **Implemented** as scaffolding.
-- **Validation Pipeline:** global `ValidationPipe` enforcing DTO schemas. **Implemented** at the framework level.
-- **Configuration Provider:** environment-driven values for plugin IDs, tokens, URLs. **Not yet implemented**.
+### Rooms & Membership
+- `RoomView`, `RoomDetailView`, `DeleteRoomView`, and `CreateRoom` manage music rooms stored in the `musicroom` collection and proxy writes to Zuri Core APIs (`/data/write`).
+- `zc_music/backend/music_room.py` exposes an additional FastAPI endpoint for bulk member additions, reusing `DataStorage` and `centrifugo_publish` to keep sidebar state in sync.
 
-## Cross-Cutting Concerns
-- **Validation:** DTO-based validation mirrors legacy field requirements. Additional slices remain **not yet implemented**.
-- **Error Mapping:** Service-level translation of dependency failures into HTTP status codes (e.g., 424) remains **not yet implemented**.
-- **Logging & Monitoring:** Not defined in legacy scope; **not yet implemented**.
-- **Configuration:** Loading of environment values is **not yet implemented**.
+### Members
+- `UserCountView`, `DeleteRoomUserView`, `RoomUserList`, and `AddUserToRoomView` orchestrate membership lists per room. They:
+  - Read/write membership arrays via `DataStorage`.
+  - Notify Centrifugo (`centrifugo_publish`) to update connected clients.
+  - Rely on helper serializers (`AddToRoomSerializer`, `RemoveUserSerializer`).
 
-## Implementation Status Summary
-- `GET /music/api/v1/info` handled by `PluginInfoController`/`PluginInfoService` — **Implemented** and aligned with the documented contract.
-- All other modules, controllers, services, and shared providers are **not yet implemented** pending future migration work.
+## Shared Infrastructure & External Dependencies
+- **DataStorage**: wraps REST calls to `https://api.zuri.chat/data/*` for read/write/delete operations.
+- **RequestClient**: generic HTTP client used for plugin install/uninstall flows.
+- **Centrifugo integration**: `centrifugo_publish` posts to `https://realtime.zuri.chat/api` using API keys stored in settings.
+- **YouTube/Metadata utilities**: functions such as `get_video` (not shown here) scrape YouTube to enrich songs.
+- **Settings**: `settings.PLUGIN_ID`, `settings.ROOM_ID`, and secrets supply plugin identifiers and default room values.
+- **Serializers**: `serializers.py` defines DTO-like schemas consumed by the views to validate inbound data.
+- **Pagination**: `SearchPagination` customises pagination responses for search endpoints.
+
+## Behavioural Characteristics
+- Most views are `APIView` subclasses combining validation, business logic, and persistence in a single class.
+- Responses preserve legacy status codes, including `424 Failed Dependency` when upstream Zuri services fail and `302 Found` for duplicate member additions.
+- Realtime events are emitted manually via Centrifugo rather than Django signals.
+- Authentication is largely pass-through: views expect `Authorization` headers (for install/uninstall) or rely on org/user identifiers provided in the request body/query.
+
+This architecture summary should be treated as the authoritative reference for the ongoing NestJS migration. Any new documentation MUST stay aligned with the concrete behaviours described above until the new implementation replaces them.

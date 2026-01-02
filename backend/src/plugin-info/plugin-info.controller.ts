@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { PluginInfoService } from './plugin-info.service';
 import { PluginInfoResponseDto } from './dto/plugin-info-response.dto';
 
-@Controller('music/api/v1')
+@Controller('api/v1/music')
 export class PluginInfoController {
   constructor(private readonly pluginInfoService: PluginInfoService) {}
 
