@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  music_postgres:
+    image: postgres:17
+    container_name: music_postgres
+    profiles: ["dev"]
+    env_file:
+      - backend/.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: node:18
+    container_name: music_backend
+    profiles: ["dev"]
+    working_dir: /usr/src/app
+    env_file:
+      - backend/.env
+    environment:
+      DB_HOST: music_postgres
+      DB_PORT: 5432
+    volumes:
+      - ./backend:/usr/src/app
+    command: bash -lc "npm install && npm start"
+    ports:
+      - "3000:3000"
+    depends_on:
+      music_postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
