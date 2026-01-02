@@ -2,10 +2,14 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PluginInfoResponseDto } from './dto/plugin-info-response.dto';
 import { PluginPingResponseDto } from './dto/plugin-ping-response.dto';
 import { RequestClient } from '../infrastructure/clients/request-client';
+import { PluginInstallRequestDto } from './dto/plugin-install-request.dto';
+import { PluginInstallResponseDto } from './dto/plugin-install-response.dto';
 
 @Injectable()
 export class PluginInfoService {
   private readonly pingUrl = 'https://music.zuri.chat/music';
+  private readonly installUrlTemplate =
+    'https://api.zuri.chat/organizations/{organisation_id}/plugins';
 
   constructor(private readonly requestClient: RequestClient) {}
 
@@ -64,6 +68,51 @@ export class PluginInfoService {
       throw new HttpException(failurePayload, HttpStatus.FAILED_DEPENDENCY, {
         cause: error instanceof Error ? error : undefined,
       });
+    }
+  }
+
+  async install(
+    dto: PluginInstallRequestDto,
+    authToken: string,
+    pluginId: string,
+  ): Promise<PluginInstallResponseDto> {
+    const payload = {
+      plugin_id: pluginId,
+      user_id: dto.user_id,
+      organisation_id: dto.organisation_id,
+    };
+
+    const url = this.installUrlTemplate.replace(
+      '{organisation_id}',
+      dto.organisation_id,
+    );
+
+    try {
+      const response = await this.requestClient.send<PluginInstallResponseDto>({
+        url,
+        method: 'POST',
+        headers: {
+          Authorization: authToken,
+          'Content-Type': 'application/json',
+        },
+        body: payload,
+      });
+
+      if (response.statusCode === HttpStatus.CREATED || response.statusCode === HttpStatus.OK) {
+        return response.data;
+      }
+
+      throw new HttpException(response.data, HttpStatus.FAILED_DEPENDENCY);
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'There is an Error with this installation! Please contact Admin',
+          success: false,
+          data: null,
+        },
+        HttpStatus.FAILED_DEPENDENCY,
+        { cause: error instanceof Error ? error : undefined },
+      );
     }
   }
 }
