@@ -6,7 +6,7 @@ import { PluginInfoResponseDto } from './dto/plugin-info-response.dto';
 export class PluginInfoController {
   constructor(private readonly pluginInfoService: PluginInfoService) {}
 
-  @Get('info')
+  @Get()
   getPluginInfo(): PluginInfoResponseDto {
     return this.pluginInfoService.getPluginInfo();
   }

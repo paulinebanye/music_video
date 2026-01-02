@@ -1,5 +1,6 @@
-import dayjs from 'dayjs';
 import type { LoggerOptions } from 'pino';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const dayjs: typeof import('dayjs') = require('dayjs');
 
 export const pinoCoreConfig: LoggerOptions = {
   redact: {
