@@ -1,9 +1,11 @@
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PluginInfoService } from '../../src/plugin-info/plugin-info.service';
 import { RequestClient } from '../../src/infrastructure/clients/request-client';
 
 describe('PluginInfoService', () => {
   let service: PluginInfoService;
+  let requestClient: { send: jest.Mock };
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -19,6 +21,11 @@ describe('PluginInfoService', () => {
     }).compile();
 
     service = module.get<PluginInfoService>(PluginInfoService);
+    requestClient = module.get(RequestClient);
+  });
+
+  beforeEach(() => {
+    requestClient.send.mockReset();
   });
 
   describe('getPluginInfo', () => {
@@ -59,6 +66,62 @@ describe('PluginInfoService', () => {
       expect(result).toHaveProperty('message');
       expect(result).toHaveProperty('data');
       expect(result).toHaveProperty('success');
+    });
+  });
+
+  describe('ping', () => {
+    it('should return upstream data when the health check succeeds', async () => {
+      const payload = {
+        server: [
+          {
+            status: 'Success',
+            Report: ['The music.zuri.chat server is working'],
+          },
+        ],
+      };
+
+      requestClient.send.mockResolvedValue({
+        statusCode: 200,
+        headers: {},
+        data: payload,
+      });
+
+      await expect(service.ping()).resolves.toEqual(payload);
+      expect(requestClient.send).toHaveBeenCalledWith({
+        url: 'https://music.zuri.chat/music',
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    });
+
+    it('should throw HttpException when upstream returns non-200', async () => {
+      requestClient.send.mockResolvedValue({
+        statusCode: 500,
+        headers: {},
+        data: undefined,
+      });
+
+      await expect(service.ping()).rejects.toBeInstanceOf(HttpException);
+      await expect(service.ping()).rejects.toHaveProperty('status', HttpStatus.FAILED_DEPENDENCY);
+    });
+
+    it('should throw HttpException with fallback payload when request fails', async () => {
+      requestClient.send.mockRejectedValue(new Error('network failure'));
+
+      await expect(service.ping()).rejects.toBeInstanceOf(HttpException);
+      await expect(service.ping()).rejects.toMatchObject({
+        status: HttpStatus.FAILED_DEPENDENCY,
+        response: {
+          server: [
+            {
+              status: 'Failed',
+              Report: ['The music.zuri.chat server is not working'],
+            },
+          ],
+        },
+      });
     });
   });
 });
