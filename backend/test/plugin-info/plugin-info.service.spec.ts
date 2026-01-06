@@ -206,4 +206,70 @@ describe('PluginInfoService', () => {
       });
     });
   });
+
+  describe('uninstall', () => {
+    const dto = {
+      user_id: 'user-1',
+      organisation_id: 'org-1',
+    };
+    const authToken = 'Bearer token';
+    const pluginId = 'plugin-42';
+
+    it('should return upstream payload when uninstall succeeds with 200', async () => {
+      const payload = {
+        message: 'Uninstalled successfully!',
+        success: true,
+        data: null,
+      };
+
+      requestClient.send.mockResolvedValue({
+        statusCode: HttpStatus.OK,
+        headers: {},
+        data: payload,
+      });
+
+      await expect(service.uninstall(dto, authToken, pluginId)).resolves.toEqual(payload);
+      expect(requestClient.send).toHaveBeenCalledWith({
+        url: `https://api.zuri.chat/organizations/${dto.organisation_id}/plugins/${pluginId}`,
+        method: 'DELETE',
+        headers: {
+          Authorization: authToken,
+          'Content-Type': 'application/json',
+        },
+        body: {
+          plugin_id: pluginId,
+          user_id: dto.user_id,
+          organisation_id: dto.organisation_id,
+        },
+      });
+    });
+
+    it('should throw HttpException when upstream returns non-200 status', async () => {
+      requestClient.send.mockResolvedValue({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        headers: {},
+        data: undefined,
+      });
+
+      await expect(service.uninstall(dto, authToken, pluginId)).rejects.toBeInstanceOf(HttpException);
+      await expect(service.uninstall(dto, authToken, pluginId)).rejects.toHaveProperty(
+        'status',
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    });
+
+    it('should throw HttpException with fallback payload when request rejects', async () => {
+      requestClient.send.mockRejectedValue(new Error('network error'));
+
+      await expect(service.uninstall(dto, authToken, pluginId)).rejects.toBeInstanceOf(HttpException);
+      await expect(service.uninstall(dto, authToken, pluginId)).rejects.toMatchObject({
+        status: HttpStatus.FAILED_DEPENDENCY,
+        response: {
+          message: 'There is an Error with this uninstallation! Please contact Admin',
+          success: false,
+          data: null,
+        },
+      });
+    });
+  });
 });
