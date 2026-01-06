@@ -5,7 +5,7 @@ import { RequestClient } from '../../src/infrastructure/clients/request-client';
 
 describe('PluginInfoService', () => {
   let service: PluginInfoService;
-  let requestClient: { send: jest.Mock };
+  let requestClient: jest.Mocked<RequestClient>;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -21,7 +21,7 @@ describe('PluginInfoService', () => {
     }).compile();
 
     service = module.get<PluginInfoService>(PluginInfoService);
-    requestClient = module.get(RequestClient);
+    requestClient = module.get(RequestClient) as jest.Mocked<RequestClient>;
   });
 
   beforeEach(() => {
