@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Post } from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiResponse } from '@nestjs/swagger';
 import { PluginInfoService } from './plugin-info.service';
 import { PluginInfoResponseDto } from './dto/plugin-info-response.dto';
@@ -7,6 +7,10 @@ import {
   PluginInstallRequestDto,
   PluginInstallResponseDto,
 } from './dto/plugin-install.dto';
+import {
+  PluginUninstallRequestDto,
+  PluginUninstallResponseDto,
+} from './dto/plugin-uninstall.dto';
 
 @Controller('api/v1/music')
 export class PluginInfoController {
@@ -46,5 +50,23 @@ export class PluginInfoController {
   ): Promise<PluginInstallResponseDto> {
     const pluginId = process.env.PLUGIN_ID ?? '';
     return this.pluginInfoService.install(dto, authorization, pluginId);
+  }
+
+  @Delete('install')
+  @ApiBody({ type: PluginUninstallRequestDto })
+  @ApiOkResponse({
+    type: PluginUninstallResponseDto,
+    description: 'Plugin successfully uninstalled',
+  })
+  @ApiResponse({
+    status: 424,
+    description: 'Upstream uninstallation dependency failed',
+  })
+  uninstall(
+    @Body() dto: PluginUninstallRequestDto,
+    @Headers('authorization') authorization: string,
+  ): Promise<PluginUninstallResponseDto> {
+    const pluginId = process.env.PLUGIN_ID ?? '';
+    return this.pluginInfoService.uninstall(dto, authorization, pluginId);
   }
 }

@@ -6,12 +6,18 @@ import {
   PluginInstallRequestDto,
   PluginInstallResponseDto,
 } from './dto/plugin-install.dto';
+import {
+  PluginUninstallRequestDto,
+  PluginUninstallResponseDto,
+} from './dto/plugin-uninstall.dto';
 
 @Injectable()
 export class PluginInfoService {
   private readonly pingUrl = 'https://music.zuri.chat/music';
   private readonly installUrlTemplate =
     'https://api.zuri.chat/organizations/{organisation_id}/plugins';
+  private readonly uninstallUrlTemplate =
+    'https://api.zuri.chat/organizations/{organisation_id}/plugins/{plugin_id}';
 
   constructor(private readonly requestClient: RequestClient) {}
 
@@ -109,6 +115,50 @@ export class PluginInfoService {
       throw new HttpException(
         {
           message: 'There is an Error with this installation! Please contact Admin',
+          success: false,
+          data: null,
+        },
+        HttpStatus.FAILED_DEPENDENCY,
+        { cause: error instanceof Error ? error : undefined },
+      );
+    }
+  }
+
+  async uninstall(
+    dto: PluginUninstallRequestDto,
+    authToken: string,
+    pluginId: string,
+  ): Promise<PluginUninstallResponseDto> {
+    const payload = {
+      plugin_id: pluginId,
+      user_id: dto.user_id,
+      organisation_id: dto.organisation_id,
+    };
+
+    const url = this.uninstallUrlTemplate
+      .replace('{organisation_id}', dto.organisation_id)
+      .replace('{plugin_id}', pluginId);
+
+    try {
+      const response = await this.requestClient.send<PluginUninstallResponseDto>({
+        url,
+        method: 'DELETE',
+        headers: {
+          Authorization: authToken,
+          'Content-Type': 'application/json',
+        },
+        body: payload,
+      });
+
+      if (response.statusCode === HttpStatus.OK) {
+        return response.data;
+      }
+
+      throw new HttpException(response.data, HttpStatus.FAILED_DEPENDENCY);
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'There is an Error with this uninstallation! Please contact Admin',
           success: false,
           data: null,
         },
