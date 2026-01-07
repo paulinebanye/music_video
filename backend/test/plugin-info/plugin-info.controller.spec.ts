@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PluginInfoController } from '../../src/plugin-info/plugin-info.controller';
+import { HttpException } from '@nestjs/common';
 import { PluginInfoService } from '../../src/plugin-info/plugin-info.service';
 import { PluginInfoResponseDto } from '../../src/plugin-info/dto/plugin-info-response.dto';
 
@@ -15,6 +16,7 @@ describe('PluginInfoController', () => {
           provide: PluginInfoService,
           useValue: {
             getPluginInfo: jest.fn(),
+            ping: jest.fn(),
           },
         },
       ],
@@ -22,6 +24,10 @@ describe('PluginInfoController', () => {
 
     controller = module.get<PluginInfoController>(PluginInfoController);
     service = module.get(PluginInfoService) as jest.Mocked<PluginInfoService>;
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
   });
 
   describe('getPluginInfo', () => {
@@ -64,6 +70,39 @@ describe('PluginInfoController', () => {
 
       expect(() => controller.getPluginInfo()).toThrow(error);
       expect(service.getPluginInfo).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('ping', () => {
+    it('should return the payload provided by the service', async () => {
+      const payload = {
+        server: [
+          {
+            status: 'Success',
+            Report: ['The music.zuri.chat server is working'],
+          },
+        ],
+      };
+      service.ping.mockResolvedValue(payload);
+
+      await expect(controller.ping()).resolves.toBe(payload);
+      expect(service.ping).toHaveBeenCalledTimes(1);
+    });
+
+    it('should rethrow HttpException from the service', async () => {
+      const error = new HttpException('failed', 424);
+      service.ping.mockRejectedValue(error);
+
+      await expect(controller.ping()).rejects.toBe(error);
+      expect(service.ping).toHaveBeenCalledTimes(1);
+    });
+
+    it('should rethrow generic errors from the service', async () => {
+      const error = new Error('network failure');
+      service.ping.mockRejectedValue(error);
+
+      await expect(controller.ping()).rejects.toBe(error);
+      expect(service.ping).toHaveBeenCalledTimes(1);
     });
   });
 });
