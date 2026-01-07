@@ -3,6 +3,15 @@ import { PluginInfoController } from '../../src/plugin-info/plugin-info.controll
 import { HttpException } from '@nestjs/common';
 import { PluginInfoService } from '../../src/plugin-info/plugin-info.service';
 import { PluginInfoResponseDto } from '../../src/plugin-info/dto/plugin-info-response.dto';
+import {
+  PluginInstallResponseDto,
+  PluginInstallRequestDto,
+} from '../../src/plugin-info/dto/plugin-install.dto';
+import { PluginPingResponseDto } from '../../src/plugin-info/dto/plugin-ping-response.dto';
+import {
+  PluginUninstallRequestDto,
+  PluginUninstallResponseDto,
+} from '../../src/plugin-info/dto/plugin-uninstall.dto';
 
 describe('PluginInfoController', () => {
   let controller: PluginInfoController;
@@ -17,6 +26,8 @@ describe('PluginInfoController', () => {
           useValue: {
             getPluginInfo: jest.fn(),
             ping: jest.fn(),
+            install: jest.fn(),
+            uninstall: jest.fn(),
           },
         },
       ],
@@ -103,6 +114,94 @@ describe('PluginInfoController', () => {
 
       await expect(controller.ping()).rejects.toBe(error);
       expect(service.ping).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('install', () => {
+    it('should delegate to the service and return its payload', async () => {
+      const authHeader = 'Bearer token';
+      const dto: PluginInstallRequestDto = {
+        user_id: 'user-1',
+        organisation_id: 'org-1',
+      };
+      const payload: PluginInstallResponseDto = {
+        message: 'Plugin successfully installed!',
+        success: true,
+        data: { redirect_url: '/music' },
+      };
+      const pluginId = 'plugin-123';
+      const originalPluginId = process.env.PLUGIN_ID;
+      process.env.PLUGIN_ID = pluginId;
+      service.install.mockResolvedValue(payload);
+
+      await expect(controller.install(dto, authHeader)).resolves.toBe(payload);
+      expect(service.install).toHaveBeenCalledTimes(1);
+      expect(service.install).toHaveBeenCalledWith(dto, authHeader, pluginId);
+
+      process.env.PLUGIN_ID = originalPluginId;
+    });
+
+    it('should propagate errors from the service', async () => {
+      const authHeader = 'Bearer token';
+      const dto: PluginInstallRequestDto = {
+        user_id: 'user-1',
+        organisation_id: 'org-1',
+      };
+      const pluginId = 'plugin-123';
+      const originalPluginId = process.env.PLUGIN_ID;
+      process.env.PLUGIN_ID = pluginId;
+      const error = new HttpException('failed', 424);
+      service.install.mockRejectedValue(error);
+
+      await expect(controller.install(dto, authHeader)).rejects.toBe(error);
+      expect(service.install).toHaveBeenCalledTimes(1);
+      expect(service.install).toHaveBeenCalledWith(dto, authHeader, pluginId);
+
+      process.env.PLUGIN_ID = originalPluginId;
+    });
+  });
+
+  describe('uninstall', () => {
+    it('should delegate to the service and return its payload', async () => {
+      const authHeader = 'Bearer token';
+      const dto: PluginUninstallRequestDto = {
+        user_id: 'user-1',
+        organisation_id: 'org-1',
+      };
+      const payload: PluginUninstallResponseDto = {
+        message: 'Uninstalled successfully!',
+        success: true,
+        data: null,
+      };
+      const pluginId = 'plugin-123';
+      const originalPluginId = process.env.PLUGIN_ID;
+      process.env.PLUGIN_ID = pluginId;
+      service.uninstall.mockResolvedValue(payload);
+
+      await expect(controller.uninstall(dto, authHeader)).resolves.toBe(payload);
+      expect(service.uninstall).toHaveBeenCalledTimes(1);
+      expect(service.uninstall).toHaveBeenCalledWith(dto, authHeader, pluginId);
+
+      process.env.PLUGIN_ID = originalPluginId;
+    });
+
+    it('should propagate errors from the service', async () => {
+      const authHeader = 'Bearer token';
+      const dto: PluginUninstallRequestDto = {
+        user_id: 'user-1',
+        organisation_id: 'org-1',
+      };
+      const payloadError = new HttpException('Failed', 424);
+      const pluginId = 'plugin-123';
+      const originalPluginId = process.env.PLUGIN_ID;
+      process.env.PLUGIN_ID = pluginId;
+      service.uninstall.mockRejectedValue(payloadError);
+
+      await expect(controller.uninstall(dto, authHeader)).rejects.toBe(payloadError);
+      expect(service.uninstall).toHaveBeenCalledTimes(1);
+      expect(service.uninstall).toHaveBeenCalledWith(dto, authHeader, pluginId);
+
+      process.env.PLUGIN_ID = originalPluginId;
     });
   });
 });
