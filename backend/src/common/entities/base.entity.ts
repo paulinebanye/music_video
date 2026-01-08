@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DeleteDateColumn } from 'typeorm/decorator/columns/DeleteDateColumn';
 
 export abstract class BaseEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -13,4 +14,7 @@ export abstract class BaseEntity {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt?: Date | null;
 }
