@@ -51,10 +51,12 @@ The Django app behaves as a monolith: all HTTP routes are registered under `musi
 
 ### Comments
 - `CommentView`, `DeleteCommentView`, and `UpdateCommentView` manage comment threads stored under the `comments` collection.
+- Endpoints are normalized to RESTful verbs in the migration plan (DELETE `/comments/{comment_id}`, PUT `/comments/{comment_id}`).
 - Uses `CommentSerializer` for validation and Centrifugo for realtime fan-out of create/update/delete events.
 
 ### Rooms & Membership
 - `RoomView`, `RoomDetailView`, `DeleteRoomView`, and `CreateRoom` manage music rooms stored in the `musicroom` collection and proxy writes to Zuri Core APIs (`/data/write`).
+- Endpoints in the migration plan normalize to RESTful verbs (`/rooms`, `/rooms/{room_id}`), with the exception of the FastAPI helper (`/members/{member_id}/rooms`) which keeps its RPC shape.
 - `zc_music/backend/music_room.py` exposes an additional FastAPI endpoint for bulk member additions, reusing `DataStorage` and `centrifugo_publish` to keep sidebar state in sync.
 
 ### Members
@@ -62,6 +64,7 @@ The Django app behaves as a monolith: all HTTP routes are registered under `musi
   - Read/write membership arrays via `DataStorage`.
   - Notify Centrifugo (`centrifugo_publish`) to update connected clients.
   - Rely on helper serializers (`AddToRoomSerializer`, `RemoveUserSerializer`).
+  - New RESTful plan: `/rooms/{room_id}/members` (GET/POST) and `/rooms/{room_id}/members/{member_id}` (DELETE), plus `/rooms/{room_id}/members/count` for counts.
 
 ## Shared Infrastructure & External Dependencies
 - **DataStorage**: wraps REST calls to `https://api.zuri.chat/data/*` for read/write/delete operations.
