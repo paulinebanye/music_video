@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 import { CommentEntity, Emoji, UiData } from './comment.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
 
 @Injectable()
 export class CommentService {
@@ -25,6 +26,44 @@ export class CommentService {
     };
 
     const comment = this.commentRepository.create(payload);
+    return this.commentRepository.save(comment);
+  }
+
+  async update(id: string, dto: UpdateCommentDto): Promise<CommentEntity> {
+    const comment = await this.commentRepository.findOne({ where: { id } });
+
+    if (!comment) {
+      throw new NotFoundException(`Comment with id "${id}" not found`);
+    }
+
+    if (dto.message !== undefined) {
+      comment.message = dto.message;
+    }
+
+    if (dto.username !== undefined) {
+      comment.username = dto.username;
+    }
+
+    if (dto.userId !== undefined) {
+      comment.userId = dto.userId;
+    }
+
+    if (dto.imageUrl !== undefined) {
+      comment.imageUrl = dto.imageUrl;
+    }
+
+    if (dto.time !== undefined) {
+      comment.time = dto.time;
+    }
+
+    if (dto.emojies !== undefined) {
+      comment.emojies = this.mapEmojies(dto.emojies);
+    }
+
+    if (dto.richUiData !== undefined) {
+      comment.richUiData = this.mapUiData(dto.richUiData);
+    }
+
     return this.commentRepository.save(comment);
   }
 
@@ -59,8 +98,6 @@ export class CommentService {
       entityMap: uiData.entityMap ?? {},
     };
   }
-
-  update() {}
 
   remove() {}
 }
