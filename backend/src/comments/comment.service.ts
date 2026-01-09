@@ -119,5 +119,13 @@ export class CommentService {
     };
   }
 
-  remove() {}
+  async remove(id: string): Promise<void> {
+    const comment = await this.commentRepository.findOne({ where: { id } });
+
+    if (!comment) {
+      throw new NotFoundException(`Comment with id "${id}" not found`);
+    }
+
+    await this.commentRepository.remove(comment);
+  }
 }

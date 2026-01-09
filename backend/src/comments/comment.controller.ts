@@ -31,5 +31,8 @@ export class CommentController {
   }
 
   @Delete(':id')
-  remove() {}
+  @ApiOkResponse({ description: 'Comment deleted successfully' })
+  async remove(@Param('id') id: string): Promise<void> {
+    await this.commentService.remove(id);
+  }
 }
