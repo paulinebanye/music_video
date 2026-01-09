@@ -237,3 +237,113 @@ describe('CommentService.update', () => {
     await expect(service.update(mockComment.id, { message: 'fail' })).rejects.toThrow(error);
   });
 });
+
+describe('CommentService.findAll', () => {
+  let service: CommentService;
+  let repository: jest.Mocked<Repository<CommentEntity>>;
+
+  const commentA = { ...mockComment };
+  const commentB = { ...mockComment, id: 'second', message: 'Second comment' } as CommentEntity;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CommentService,
+        {
+          provide: getRepositoryToken(CommentEntity),
+          useValue: {
+            findAndCount: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<CommentService>(CommentService);
+    repository = module.get(getRepositoryToken(CommentEntity));
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return paginated comments with metadata', async () => {
+    repository.findAndCount.mockResolvedValue([[commentA, commentB], 5]);
+
+    const result = await service.findAll({ page: 1, limit: 2 });
+
+    expect(repository.findAndCount).toHaveBeenCalledWith({
+      where: {},
+      take: 2,
+      skip: 0,
+      order: { createdAt: 'DESC' },
+    });
+
+    expect(result.data).toEqual([commentA, commentB]);
+    expect(result.meta).toEqual({
+      page: 1,
+      limit: 2,
+      totalItems: 5,
+      totalPages: 3,
+    });
+  });
+
+  it('should filter by userId when provided', async () => {
+    repository.findAndCount.mockResolvedValue([[commentA], 1]);
+
+    await service.findAll({ page: 1, limit: 20, userId: 'user-123' });
+
+    expect(repository.findAndCount).toHaveBeenCalledWith({
+      where: { userId: 'user-123' },
+      take: 20,
+      skip: 0,
+      order: { createdAt: 'DESC' },
+    });
+  });
+
+  it('should filter by username when provided', async () => {
+    repository.findAndCount.mockResolvedValue([[commentA], 1]);
+
+    await service.findAll({ page: 1, limit: 20, username: 'john_doe' });
+
+    expect(repository.findAndCount).toHaveBeenCalledWith({
+      where: { username: 'john_doe' },
+      take: 20,
+      skip: 0,
+      order: { createdAt: 'DESC' },
+    });
+  });
+
+  it('should honour sorting parameters', async () => {
+    repository.findAndCount.mockResolvedValue([[commentA], 1]);
+
+    await service.findAll({ page: 1, limit: 20, sortBy: 'createdAt', order: 'ASC' });
+
+    expect(repository.findAndCount).toHaveBeenCalledWith({
+      where: {},
+      take: 20,
+      skip: 0,
+      order: { createdAt: 'ASC' },
+    });
+  });
+
+  it('should handle empty result sets', async () => {
+    repository.findAndCount.mockResolvedValue([[], 0]);
+
+    const result = await service.findAll({ page: 1, limit: 20 });
+
+    expect(result.data).toEqual([]);
+    expect(result.meta).toEqual({
+      page: 1,
+      limit: 20,
+      totalItems: 0,
+      totalPages: 0,
+    });
+  });
+
+  it('should propagate repository errors', async () => {
+    const error = new Error('query failed');
+    repository.findAndCount.mockRejectedValue(error);
+
+    await expect(service.findAll({ page: 1, limit: 20 })).rejects.toThrow(error);
+  });
+});
