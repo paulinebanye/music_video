@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CommentService } from '../../src/comments/comment.service';
 import { CommentEntity } from '../../src/comments/comment.entity';
 import { CreateCommentDto } from '../../src/comments/dto/create-comment.dto';
+import { UpdateCommentDto } from '../../src/comments/dto/update-comment.dto';
 
 const mockComment = {
   id: 'comment-id',
@@ -142,5 +143,97 @@ describe('CommentService.create', () => {
     repository.save.mockRejectedValue(error);
 
     await expect(service.create(dto)).rejects.toThrow(error);
+  });
+});
+
+describe('CommentService.update', () => {
+  let service: CommentService;
+  let repository: jest.Mocked<Repository<CommentEntity>>;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CommentService,
+        {
+          provide: getRepositoryToken(CommentEntity),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ ...mockComment }),
+            save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<CommentService>(CommentService);
+    repository = module.get(getRepositoryToken(CommentEntity));
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should update only provided fields', async () => {
+    const dto: UpdateCommentDto = {
+      message: 'Updated message',
+      emojies: [
+        {
+          name: 'laugh',
+          emoji: '😂',
+          count: 5,
+        },
+      ],
+    };
+
+    const result = await service.update(mockComment.id, dto);
+
+    expect(repository.findOne).toHaveBeenCalledWith({ where: { id: mockComment.id } });
+    expect(result.message).toBe(dto.message);
+    expect(result.emojies).toEqual(dto.emojies);
+    expect(result.username).toBe(mockComment.username);
+    expect(result.richUiData).toEqual(mockComment.richUiData);
+    expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
+      id: mockComment.id,
+      message: dto.message,
+      emojies: dto.emojies,
+    }));
+  });
+
+  it('should map richUiData when provided', async () => {
+    const dto: UpdateCommentDto = {
+      richUiData: {
+        blocks: [
+          {
+            key: 'block-2',
+            text: 'Changed block',
+            type: 'paragraph',
+            depth: 0,
+            data: {},
+            entityRanges: [],
+            inlineStyleRanges: [],
+          },
+        ],
+        entityMap: {},
+      },
+    };
+
+    const result = await service.update(mockComment.id, dto);
+
+    expect(result.richUiData).toEqual(dto.richUiData);
+    expect(repository.save).toHaveBeenCalledWith(expect.objectContaining({
+      richUiData: dto.richUiData,
+    }));
+  });
+
+  it('should throw NotFoundException when comment does not exist', async () => {
+    repository.findOne.mockResolvedValue(null);
+
+    await expect(service.update('missing-id', {})).rejects.toThrow('Comment with id "missing-id" not found');
+  });
+
+  it('should propagate errors from repository.save', async () => {
+    const error = new Error('Update failed');
+    repository.save.mockRejectedValue(error);
+
+    await expect(service.update(mockComment.id, { message: 'fail' })).rejects.toThrow(error);
   });
 });
