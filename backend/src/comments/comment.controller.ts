@@ -3,16 +3,17 @@ import { ApiBody, ApiOkResponse } from '@nestjs/swagger';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
-import { CommentEntity } from './comment.entity';
 import { ListCommentsQueryDto } from './dto/list-comments.query.dto';
+import { CommentListResponseDto } from './dto/comment-list.response.dto';
+import { CommentEntity } from './comment.entity';
 
 @Controller('comments')
 export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
   @Get()
-  @ApiOkResponse({ description: 'Paginated list of comments', type: [CommentEntity] })
-  findAll(@Query() query: ListCommentsQueryDto): Promise<CommentEntity[]> {
+  @ApiOkResponse({ description: 'Paginated list of comments', type: CommentListResponseDto })
+  findAll(@Query() query: ListCommentsQueryDto): Promise<CommentListResponseDto> {
     return this.commentService.findAll(query);
   }
 

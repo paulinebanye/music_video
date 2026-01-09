@@ -5,6 +5,8 @@ import { CommentEntity, Emoji, UiData } from './comment.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { ListCommentsQueryDto } from './dto/list-comments.query.dto';
+import { CommentListResponseDto } from './dto/comment-list.response.dto';
+import { PaginationMetaDto } from './dto/pagination-meta.dto';
 
 @Injectable()
 export class CommentService {
@@ -13,7 +15,7 @@ export class CommentService {
     private readonly commentRepository: Repository<CommentEntity>,
   ) {}
 
-  findAll(query: ListCommentsQueryDto): Promise<CommentEntity[]> {
+  async findAll(query: ListCommentsQueryDto): Promise<CommentListResponseDto> {
     const { page = 1, limit = 20, userId, username, sortBy = 'createdAt', order = 'DESC' } = query;
 
     const where: Record<string, unknown> = {};
@@ -26,12 +28,21 @@ export class CommentService {
       where.username = username;
     }
 
-    return this.commentRepository.find({
+    const [data, totalItems] = await this.commentRepository.findAndCount({
       where,
       take: limit,
       skip: (page - 1) * limit,
       order: { [sortBy]: order },
     });
+
+    const meta: PaginationMetaDto = {
+      page,
+      limit,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit) || 0,
+    };
+
+    return { data, meta };
   }
 
   async create(dto: CreateCommentDto): Promise<CommentEntity> {
