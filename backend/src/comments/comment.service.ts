@@ -4,6 +4,7 @@ import { DeepPartial, Repository } from 'typeorm';
 import { CommentEntity, Emoji, UiData } from './comment.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { ListCommentsQueryDto } from './dto/list-comments.query.dto';
 
 @Injectable()
 export class CommentService {
@@ -12,7 +13,26 @@ export class CommentService {
     private readonly commentRepository: Repository<CommentEntity>,
   ) {}
 
-  findAll() {}
+  findAll(query: ListCommentsQueryDto): Promise<CommentEntity[]> {
+    const { page = 1, limit = 20, userId, username, sortBy = 'createdAt', order = 'DESC' } = query;
+
+    const where: Record<string, unknown> = {};
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    if (username) {
+      where.username = username;
+    }
+
+    return this.commentRepository.find({
+      where,
+      take: limit,
+      skip: (page - 1) * limit,
+      order: { [sortBy]: order },
+    });
+  }
 
   async create(dto: CreateCommentDto): Promise<CommentEntity> {
     const payload: DeepPartial<CommentEntity> = {
