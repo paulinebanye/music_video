@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -345,5 +346,55 @@ describe('CommentService.findAll', () => {
     repository.findAndCount.mockRejectedValue(error);
 
     await expect(service.findAll({ page: 1, limit: 20 })).rejects.toThrow(error);
+  });
+});
+
+describe('CommentService.remove', () => {
+  let service: CommentService;
+  let repository: jest.Mocked<Repository<CommentEntity>>;
+
+  const existingComment = { ...mockComment } as CommentEntity;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CommentService,
+        {
+          provide: getRepositoryToken(CommentEntity),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue(existingComment),
+            remove: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<CommentService>(CommentService);
+    repository = module.get(getRepositoryToken(CommentEntity));
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should remove an existing comment', async () => {
+    await expect(service.remove(existingComment.id)).resolves.toBeUndefined();
+
+    expect(repository.findOne).toHaveBeenCalledWith({ where: { id: existingComment.id } });
+    expect(repository.remove).toHaveBeenCalledWith(existingComment);
+  });
+
+  it('should throw NotFoundException when comment does not exist', async () => {
+    repository.findOne.mockResolvedValueOnce(null);
+
+    await expect(service.remove('missing-id')).rejects.toThrow(NotFoundException);
+    expect(repository.remove).not.toHaveBeenCalled();
+  });
+
+  it('should propagate errors from repository.remove', async () => {
+    const error = new Error('delete failed');
+    repository.remove.mockRejectedValueOnce(error);
+
+    await expect(service.remove(existingComment.id)).rejects.toThrow(error);
   });
 });
